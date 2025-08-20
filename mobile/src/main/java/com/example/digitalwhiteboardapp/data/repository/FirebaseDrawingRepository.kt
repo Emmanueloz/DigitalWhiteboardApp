@@ -15,13 +15,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import timber.log.Timber
-import javax.inject.Inject
-import javax.inject.Singleton
 
 private const val SHAPES_PATH = "shapes"
 
-@Singleton
-class FirebaseDrawingRepository @Inject constructor(
+class FirebaseDrawingRepository(
     private val database: FirebaseDatabase
 ) : DrawingRepository {
     

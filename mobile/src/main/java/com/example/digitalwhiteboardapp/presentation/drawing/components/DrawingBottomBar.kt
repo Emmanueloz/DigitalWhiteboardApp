@@ -38,8 +38,6 @@ fun DrawingBottomBar(
                             RECTANGLE -> Icons.Default.CropSquare
                             CIRCLE -> Icons.Default.Circle
                             FREE_PATH -> Icons.Default.Edit
-                            OVAL -> TODO()
-                            ERASER -> TODO()
                         },
                         contentDescription = shape.name
                     )
@@ -89,11 +87,5 @@ fun DrawingBottomBar(
         )
     }
 
-    // Stroke width slider
-    Slider(
-        value = currentStrokeWidth,
-        onValueChange = onStrokeWidthChange,
-        valueRange = 1f..50f,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-    )
+
 }

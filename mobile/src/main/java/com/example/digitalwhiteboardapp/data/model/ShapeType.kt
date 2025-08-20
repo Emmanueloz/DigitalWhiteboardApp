@@ -7,7 +7,5 @@ enum class ShapeType {
     LINE,
     RECTANGLE,
     CIRCLE,
-    OVAL,
     FREE_PATH,
-    ERASER
 }

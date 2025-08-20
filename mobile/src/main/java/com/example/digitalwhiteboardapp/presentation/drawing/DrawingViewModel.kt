@@ -9,18 +9,14 @@ import com.example.digitalwhiteboardapp.data.model.Line
 import com.example.digitalwhiteboardapp.data.model.Rectangle
 import com.example.digitalwhiteboardapp.data.model.ShapeType
 import com.example.digitalwhiteboardapp.data.repository.DrawingRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-
 
 /**
  * ViewModel for the drawing screen.
  * Manages the drawing state and handles user interactions.
  */
-@HiltViewModel
-class DrawingViewModel @Inject constructor(
+class DrawingViewModel(
     private val repository: DrawingRepository
 ) : ViewModel() {
 

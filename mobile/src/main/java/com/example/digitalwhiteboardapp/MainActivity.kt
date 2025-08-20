@@ -11,20 +11,31 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import com.example.digitalwhiteboardapp.data.repository.DrawingRepository
+import com.example.digitalwhiteboardapp.data.repository.FirebaseDrawingRepository
 import com.example.digitalwhiteboardapp.presentation.drawing.DrawingScreen
 import com.example.digitalwhiteboardapp.presentation.drawing.DrawingViewModel
 import com.example.digitalwhiteboardapp.ui.theme.DigitalWhiteboardAppTheme
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
+import com.google.firebase.database.FirebaseDatabase
 
-@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    @Inject
-    lateinit var viewModel: DrawingViewModel
+    private lateinit var viewModel: DrawingViewModel
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Initialize repository and ViewModel
+        val firebaseDatabase = FirebaseDatabase.getInstance()
+        val repository:DrawingRepository = FirebaseDrawingRepository(firebaseDatabase)
+        viewModel = ViewModelProvider(this, object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return DrawingViewModel(repository) as T
+            }
+        })[DrawingViewModel::class.java]
         
         // Enable edge-to-edge display
         WindowCompat.setDecorFitsSystemWindows(window, false)
