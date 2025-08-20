@@ -11,6 +11,7 @@ import com.example.digitalwhiteboardapp.data.model.ShapeType
 import com.example.digitalwhiteboardapp.data.repository.DrawingRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 /**
  * ViewModel for the drawing screen.
@@ -32,15 +33,13 @@ class DrawingViewModel(
             try {
                 _uiState.value = _uiState.value.copy(isLoading = true)
                 
-                // Load the drawing
-                repository.observeShapes()
-                    .collect { shapes ->
-                        _uiState.value = _uiState.value.copy(
-                            shapes = shapes,
-                            isLoading = false,
-                            errorMessage = null
-                        )
-                    }
+                // Load shapes from repository only once
+                val shapes = repository.loadShapes()
+                _uiState.value = _uiState.value.copy(
+                    shapes = shapes,
+                    isLoading = false,
+                    errorMessage = null
+                )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     errorMessage = "Failed to load drawing: ${e.message}",
@@ -52,38 +51,19 @@ class DrawingViewModel(
 
     fun onStartDrawing(offset: Offset) {
         val currentState = _uiState.value
-        // Handle eraser
-        if (currentState.isErasing) {
-            val shapesToRemove = mutableListOf<Int>()
-            currentState.shapes.forEachIndexed { index, shape ->
-                if (isPointOnShape(offset, shape, currentState.strokeWidth)) {
-                    shapesToRemove.add(index)
-                }
-            }
-            
-            if (shapesToRemove.isNotEmpty()) {
-                val updatedShapes = currentState.shapes.toMutableList()
-                shapesToRemove.sortedDescending().forEach { index ->
-                    updatedShapes.removeAt(index)
-                }
-                _uiState.value = currentState.copy(
-                    shapes = updatedShapes,
-                )
-            }
-        } else {
-            // Start a new shape
-            val newShape = when (currentState.selectedTool) {
-                ShapeType.LINE -> Line(
-                    start = offset,
-                    end = offset,
-                    color = currentState.selectedColor,
-                    strokeWidth = currentState.strokeWidth,
-                    isFilled = currentState.isFilled
-                )
-                ShapeType.RECTANGLE -> Rectangle(
-                    topLeft = offset,
-                    bottomRight = offset,
-                    color = currentState.selectedColor,
+        // Start a new shape
+        val newShape = when (currentState.selectedTool) {
+            ShapeType.LINE -> Line(
+                start = offset,
+                end = offset,
+                color = currentState.selectedColor,
+                strokeWidth = currentState.strokeWidth,
+                isFilled = currentState.isFilled
+            )
+            ShapeType.RECTANGLE -> Rectangle(
+                topLeft = offset,
+                bottomRight = offset,
+                color = currentState.selectedColor,
                     strokeWidth = currentState.strokeWidth,
                     isFilled = currentState.isFilled
                 )
@@ -106,7 +86,6 @@ class DrawingViewModel(
                 currentShape = newShape
             )
         }
-    }
     
     fun onDraw(offset: Offset) {
         val currentState = _uiState.value
@@ -151,20 +130,39 @@ class DrawingViewModel(
     
     fun onEndDrawing() {
         val currentState = _uiState.value
-        currentState.currentShape?.let { currentShape ->
-            val updatedShapes = currentState.shapes.toMutableList().apply {
-                add(currentShape)
-            }
+        val currentShape = currentState.currentShape ?: return
+        
+        // Only add the shape if it's valid (has points or dimensions)
+        val isValidShape = when (currentShape) {
+            is Line -> currentShape.start != currentShape.end
+            is Rectangle -> currentShape.topLeft != currentShape.bottomRight
+            is Circle -> currentShape.radius > 0
+            is FreePath -> currentShape.points.size > 1
+            else -> false
+        }
+        
+        if (isValidShape) {
+            // Update local state immediately for UI
+            val updatedShapes = currentState.shapes + currentShape
             _uiState.value = currentState.copy(
                 shapes = updatedShapes,
                 currentShape = null,
-                isErasing = false,
                 selectedShapeIndex = -1
             )
-            saveCurrentState()
-        } ?: run {
+            
+            // Save to Firebase in the background (only for persistence)
+            viewModelScope.launch {
+                try {
+                    repository.saveShape(currentShape)
+                } catch (e: Exception) {
+                    // Don't show error to user for background save
+                    Timber.e(e, "Error saving to Firebase")
+                }
+            }
+        } else {
+            // If shape is not valid, just clear the current shape
             _uiState.value = currentState.copy(
-                isErasing = false,
+                currentShape = null,
                 selectedShapeIndex = -1
             )
         }
@@ -326,7 +324,10 @@ class DrawingViewModel(
         viewModelScope.launch {
             try {
                 val currentState = _uiState.value
-                currentState.shapes.forEach { shape -> repository.saveShape(shape) }
+                // Save the current shape if it exists
+                currentState.currentShape?.let { shape ->
+                    repository.saveShape(shape)
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     errorMessage = "Failed to save: ${e.message}"

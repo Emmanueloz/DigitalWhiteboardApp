@@ -27,12 +27,6 @@ interface DrawingRepository {
     suspend fun updateShape(shape: DrawingShape)
 
     /**
-     * Observes changes to the drawing.
-     * @return A Flow that emits the current list of shapes whenever it changes.
-     */
-    fun observeShapes(): Flow<List<DrawingShape>>
-
-    /**
      * Clears all shapes from the current drawing.
      */
     suspend fun clearDrawing()

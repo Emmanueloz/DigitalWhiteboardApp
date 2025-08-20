@@ -43,11 +43,21 @@ abstract class DrawingShape {
     abstract val color: Color
     abstract val strokeWidth: Float
     abstract val isFilled: Boolean
+    abstract val isRemoved: Boolean
 
     abstract fun toSvg(): String
     abstract fun draw(scope: DrawScope)
 
-    abstract fun toFirebaseMap(): Map<String, Any>
+    open fun toFirebaseMap(): Map<String, Any> {
+        return mapOf(
+            "id" to id,
+            "type" to type.name,
+            "color" to color.toHex(),
+            "strokeWidth" to strokeWidth,
+            "isFilled" to isFilled,
+            "isRemoved" to isRemoved
+        )
+    }
 
     companion object {
         fun fromFirebaseMap(map: Map<String, Any>): DrawingShape? {
@@ -75,22 +85,20 @@ data class Line(
     @Serializable(with = ColorSerializer::class)
     override val color: Color,
     override val strokeWidth: Float,
-    override val isFilled: Boolean = false
+    override val isFilled: Boolean = false,
+    override val isRemoved: Boolean = false
 ) : DrawingShape() {
     override val type: ShapeType = ShapeType.LINE
 
     override fun toFirebaseMap(): Map<String, Any> {
-        return mapOf(
-            "id" to id,
-            "type" to type.name,
-            "startX" to start.x,
-            "startY" to start.y,
-            "endX" to end.x,
-            "endY" to end.y,
-            "color" to color.toHex(),
-            "strokeWidth" to strokeWidth,
-            "isFilled" to isFilled
-        )
+        return super.toFirebaseMap().toMutableMap().apply {
+            putAll(mapOf(
+                "startX" to start.x,
+                "startY" to start.y,
+                "endX" to end.x,
+                "endY" to end.y
+            ))
+        }
     }
 
     companion object {
@@ -98,16 +106,17 @@ data class Line(
             return Line(
                 id = map["id"] as? String ?: UUID.randomUUID().toString(),
                 start = Offset(
-                    (map["startX"] as? Double)?.toFloat() ?: 0f,
-                    (map["startY"] as? Double)?.toFloat() ?: 0f
+                    (map["startX"] as? Number)?.toFloat() ?: 0f,
+                    (map["startY"] as? Number)?.toFloat() ?: 0f
                 ),
                 end = Offset(
-                    (map["endX"] as? Double)?.toFloat() ?: 0f,
-                    (map["endY"] as? Double)?.toFloat() ?: 0f
+                    (map["endX"] as? Number)?.toFloat() ?: 0f,
+                    (map["endY"] as? Number)?.toFloat() ?: 0f
                 ),
                 color = (map["color"] as? String)?.hexToColor() ?: Color.Black,
-                strokeWidth = (map["strokeWidth"] as? Double)?.toFloat() ?: 5f,
-                isFilled = map["isFilled"] as? Boolean ?: false
+                strokeWidth = (map["strokeWidth"] as? Number)?.toFloat() ?: 5f,
+                isFilled = map["isFilled"] as? Boolean ?: false,
+                isRemoved = map["isRemoved"] as? Boolean ?: false
             )
         }
     }
@@ -140,22 +149,20 @@ data class Rectangle(
     @Serializable(with = ColorSerializer::class)
     override val color: Color,
     override val strokeWidth: Float,
-    override val isFilled: Boolean = false
+    override val isFilled: Boolean = false,
+    override val isRemoved: Boolean = false
 ) : DrawingShape() {
     override val type: ShapeType = ShapeType.RECTANGLE
 
     override fun toFirebaseMap(): Map<String, Any> {
-        return mapOf(
-            "id" to id,
-            "type" to type.name,
-            "topLeftX" to topLeft.x,
-            "topLeftY" to topLeft.y,
-            "bottomRightX" to bottomRight.x,
-            "bottomRightY" to bottomRight.y,
-            "color" to color.toHex(),
-            "strokeWidth" to strokeWidth,
-            "isFilled" to isFilled
-        )
+        return super.toFirebaseMap().toMutableMap().apply {
+            putAll(mapOf(
+                "topLeftX" to topLeft.x,
+                "topLeftY" to topLeft.y,
+                "bottomRightX" to bottomRight.x,
+                "bottomRightY" to bottomRight.y
+            ))
+        }
     }
 
     companion object {
@@ -163,16 +170,17 @@ data class Rectangle(
             return Rectangle(
                 id = map["id"] as? String ?: UUID.randomUUID().toString(),
                 topLeft = Offset(
-                    (map["topLeftX"] as? Double)?.toFloat() ?: 0f,
-                    (map["topLeftY"] as? Double)?.toFloat() ?: 0f
+                    (map["topLeftX"] as? Number)?.toFloat() ?: 0f,
+                    (map["topLeftY"] as? Number)?.toFloat() ?: 0f
                 ),
                 bottomRight = Offset(
-                    (map["bottomRightX"] as? Double)?.toFloat() ?: 0f,
-                    (map["bottomRightY"] as? Double)?.toFloat() ?: 0f
+                    (map["bottomRightX"] as? Number)?.toFloat() ?: 0f,
+                    (map["bottomRightY"] as? Number)?.toFloat() ?: 0f
                 ),
                 color = (map["color"] as? String)?.hexToColor() ?: Color.Black,
-                strokeWidth = (map["strokeWidth"] as? Double)?.toFloat() ?: 5f,
-                isFilled = map["isFilled"] as? Boolean ?: false
+                strokeWidth = (map["strokeWidth"] as? Number)?.toFloat() ?: 5f,
+                isFilled = map["isFilled"] as? Boolean ?: false,
+                isRemoved = map["isRemoved"] as? Boolean ?: false
             )
         }
     }
@@ -218,21 +226,19 @@ data class Circle(
     @Serializable(with = ColorSerializer::class)
     override val color: Color,
     override val strokeWidth: Float,
-    override val isFilled: Boolean = false
+    override val isFilled: Boolean = false,
+    override val isRemoved: Boolean = false
 ) : DrawingShape() {
     override val type: ShapeType = ShapeType.CIRCLE
 
     override fun toFirebaseMap(): Map<String, Any> {
-        return mapOf(
-            "id" to id,
-            "type" to type.name,
-            "centerX" to center.x,
-            "centerY" to center.y,
-            "radius" to radius,
-            "color" to color.toHex(),
-            "strokeWidth" to strokeWidth,
-            "isFilled" to isFilled
-        )
+        return super.toFirebaseMap().toMutableMap().apply {
+            putAll(mapOf(
+                "centerX" to center.x,
+                "centerY" to center.y,
+                "radius" to radius
+            ))
+        }
     }
 
     companion object {
@@ -240,13 +246,14 @@ data class Circle(
             return Circle(
                 id = map["id"] as? String ?: UUID.randomUUID().toString(),
                 center = Offset(
-                    (map["centerX"] as? Double)?.toFloat() ?: 0f,
-                    (map["centerY"] as? Double)?.toFloat() ?: 0f
+                    (map["centerX"] as? Number)?.toFloat() ?: 0f,
+                    (map["centerY"] as? Number)?.toFloat() ?: 0f
                 ),
-                radius = (map["radius"] as? Double)?.toFloat() ?: 0f,
+                radius = (map["radius"] as? Number)?.toFloat() ?: 0f,
                 color = (map["color"] as? String)?.hexToColor() ?: Color.Black,
-                strokeWidth = (map["strokeWidth"] as? Double)?.toFloat() ?: 5f,
-                isFilled = map["isFilled"] as? Boolean ?: false
+                strokeWidth = (map["strokeWidth"] as? Number)?.toFloat() ?: 5f,
+                isFilled = map["isFilled"] as? Boolean ?: false,
+                isRemoved = map["isRemoved"] as? Boolean ?: false
             )
         }
     }
@@ -288,40 +295,41 @@ data class FreePath(
     @Serializable(with = ColorSerializer::class)
     override val color: Color,
     override val strokeWidth: Float,
-    override val isFilled: Boolean = false
+    override val isFilled: Boolean = false,
+    override val isRemoved: Boolean = false
 ) : DrawingShape() {
     override val type: ShapeType = ShapeType.FREE_PATH
 
     override fun toFirebaseMap(): Map<String, Any> {
-        val pointsList = points.map { point ->
-            mapOf("x" to point.x, "y" to point.y)
-        }
+        val pointsMap = points.flatMapIndexed { index, offset ->
+            listOf(
+                "x$index" to offset.x,
+                "y$index" to offset.y
+            )
+        }.toMap()
 
-        return mapOf(
-            "id" to id,
-            "type" to type.name,
-            "points" to pointsList,
-            "color" to color.toHex(),
-            "strokeWidth" to strokeWidth,
-            "isFilled" to isFilled
-        )
+        return super.toFirebaseMap().toMutableMap().apply {
+            putAll(pointsMap)
+            put("pointCount", points.size)
+        }
     }
 
     companion object {
         fun fromFirebaseMap(map: Map<String, Any>): FreePath {
-            val pointsList = (map["points"] as? List<Map<String, Double>>)?.map { pointMap ->
-                Offset(
-                    (pointMap["x"] ?: 0.0).toFloat(),
-                    (pointMap["y"] ?: 0.0).toFloat()
-                )
-            } ?: emptyList()
+            val pointCount = (map["pointCount"] as? Number)?.toInt() ?: 0
+            val points = (0 until pointCount).mapNotNull { index ->
+                val x = (map["x$index"] as? Number)?.toFloat()
+                val y = (map["y$index"] as? Number)?.toFloat()
+                if (x != null && y != null) Offset(x, y) else null
+            }.filterNotNull()
 
             return FreePath(
                 id = map["id"] as? String ?: UUID.randomUUID().toString(),
-                points = pointsList,
+                points = points,
                 color = (map["color"] as? String)?.hexToColor() ?: Color.Black,
-                strokeWidth = (map["strokeWidth"] as? Double)?.toFloat() ?: 5f,
-                isFilled = map["isFilled"] as? Boolean ?: false
+                strokeWidth = (map["strokeWidth"] as? Number)?.toFloat() ?: 5f,
+                isFilled = map["isFilled"] as? Boolean ?: false,
+                isRemoved = map["isRemoved"] as? Boolean ?: false
             )
         }
     }

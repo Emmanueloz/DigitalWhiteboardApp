@@ -23,35 +23,15 @@ class FirebaseDrawingRepository(
 ) : DrawingRepository {
     
     private val shapesRef = database.getReference(SHAPES_PATH)
-    private val _currentShapes = MutableStateFlow<List<DrawingShape>>(emptyList())
-    
-    init {
-        // Set up real-time updates for shapes
-        shapesRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                try {
-                    val shapes = snapshot.children.mapNotNull { child ->
-                        val map = child.value as Map<String, Any>
-                        map.let { toShape(it) }
-                    }
-                    _currentShapes.value = shapes
-                } catch (e: Exception) {
-                    Timber.e(e, "Error parsing shapes from Firebase")
-                }
-            }
-            
-            override fun onCancelled(error: DatabaseError) {
-                Timber.e("Firebase Database Error: ${error.message}")
-            }
-        })
-    }
     
     override suspend fun loadShapes(): List<DrawingShape> {
         return try {
             val snapshot = shapesRef.get().await()
             snapshot.children.mapNotNull { child ->
-                val map = child.value as? Map<String, Any>
-                map?.let { toShape(it) }
+                val map = child.value as? Map<String, Any> ?: return@mapNotNull null
+                // Skip shapes marked as removed
+                if (map["isRemoved"] == true) return@mapNotNull null
+                toShape(map)
             }
         } catch (e: Exception) {
             Timber.e(e, "Error loading shapes from Firebase")
@@ -61,8 +41,15 @@ class FirebaseDrawingRepository(
     
     override suspend fun saveShape(shape: DrawingShape) {
         try {
-            val shapeMap = shape.toFirebaseMap()
-            shapesRef.child(shape.id).setValue(shapeMap).await()
+            val shapeMap = shape.toFirebaseMap().toMutableMap()
+            // If shape is marked as removed, set isRemoved flag and update
+            if (shape.isRemoved) {
+                shapeMap["isRemoved"] = true
+                shapesRef.child(shape.id).setValue(shapeMap).await()
+            } else {
+                // Only save if not marked as removed
+                shapesRef.child(shape.id).setValue(shapeMap).await()
+            }
         } catch (e: Exception) {
             Timber.e(e, "Error saving shape to Firebase")
             throw e
@@ -76,35 +63,6 @@ class FirebaseDrawingRepository(
         } catch (e: Exception) {
             Timber.e(e, "Error updating shape in Firebase")
             throw e
-        }
-    }
-    
-    override fun observeShapes(): Flow<List<DrawingShape>> = callbackFlow {
-        val listener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                try {
-                    val shapes = snapshot.children.mapNotNull { child ->
-                        val map = child.value as? Map<String, Any>
-                        map?.let { toShape(it) }
-                    }
-                    trySend(shapes)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error in shapes observer")
-                    close(e)
-                }
-            }
-            
-            override fun onCancelled(error: DatabaseError) {
-                val exception = error.toException()
-                Timber.e(exception, "Firebase Database Error in observer")
-                close(exception)
-            }
-        }
-        
-        shapesRef.addValueEventListener(listener)
-        
-        awaitClose {
-            shapesRef.removeEventListener(listener)
         }
     }
     
