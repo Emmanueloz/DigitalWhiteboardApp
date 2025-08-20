@@ -57,7 +57,9 @@ fun DrawingBottomBar(
                 )
             },
             selected = false,
-            onClick = { /* Color picker would go here */ }
+            onClick = {
+                onColorSelected
+            }
         )
 
         // Fill toggle

@@ -64,8 +64,7 @@ class MainActivity : ComponentActivity() {
                 color = MaterialTheme.colorScheme.background
             ) {
                 DrawingScreen(
-                    viewModel = viewModel,
-                    onNavigateBack = { /* No navigation needed */ }
+                    viewModel = viewModel
                 )
             }
         }

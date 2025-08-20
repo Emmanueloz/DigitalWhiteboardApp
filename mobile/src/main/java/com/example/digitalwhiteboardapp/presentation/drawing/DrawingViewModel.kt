@@ -12,6 +12,7 @@ import com.example.digitalwhiteboardapp.data.repository.DrawingRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import kotlin.collections.last
 
 /**
  * ViewModel for the drawing screen.
@@ -163,24 +164,41 @@ class DrawingViewModel(
             // If shape is not valid, just clear the current shape
             _uiState.value = currentState.copy(
                 currentShape = null,
-                selectedShapeIndex = -1
             )
         }
     }
     
-    fun onUndo() {
+     fun onUndo() {
         _uiState.value.let { currentState ->
             if (currentState.shapes.isNotEmpty()) {
                 val updatedShapes = currentState.shapes.toMutableList()
-                updatedShapes.removeLast()
-                _uiState.value = currentState.copy(
-                    shapes = updatedShapes,
-                    selectedShapeIndex = -1,
-                    currentShape = null
-                )
+
+
+                if (updatedShapes.size>1) {
+                    updatedShapes.removeAt(updatedShapes.lastIndex)
+
+                    _uiState.value = currentState.copy(
+                        shapes = updatedShapes,
+                        currentShape = null
+                    )
+                }
+                else{
+
+
+                    _uiState.value = currentState.copy(
+                        shapes = emptyList(),
+                        currentShape = null
+                    )
+                }
+
                 saveCurrentState()
+
+                viewModelScope.launch {
+                    repository.removeShape(updatedShapes.last().id)
+                }
             }
         }
+
     }
     
     fun onClear() {
@@ -190,6 +208,9 @@ class DrawingViewModel(
             currentShape = null
         )
         saveCurrentState()
+        viewModelScope.launch {
+            repository.clearDrawing()
+        }
     }
     
     fun selectTool(tool: ShapeType) {

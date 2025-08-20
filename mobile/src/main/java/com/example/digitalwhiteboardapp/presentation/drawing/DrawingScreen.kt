@@ -20,7 +20,6 @@ import com.example.digitalwhiteboardapp.presentation.drawing.components.ErrorDia
 @Composable
 fun DrawingScreen(
     viewModel: DrawingViewModel,
-    onNavigateBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -33,16 +32,6 @@ fun DrawingScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Digital Whiteboard") },
-                actions = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
-                    }
-                }
-            )
-        },
         bottomBar = {
             DrawingBottomBar(
                 selectedTool = uiState.selectedTool,
