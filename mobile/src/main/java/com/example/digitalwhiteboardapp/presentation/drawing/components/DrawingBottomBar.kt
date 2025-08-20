@@ -1,14 +1,18 @@
 package com.example.digitalwhiteboardapp.presentation.drawing.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.example.digitalwhiteboardapp.data.model.ShapeType
 import com.example.digitalwhiteboardapp.data.model.ShapeType.*
@@ -29,7 +33,7 @@ fun DrawingBottomBar(
 ) {
     NavigationBar {
         // Drawing tools
-        ShapeType.values().forEach { shape ->
+        ShapeType.entries.forEach { shape ->
             NavigationBarItem(
                 icon = {
                     Icon(
@@ -47,19 +51,60 @@ fun DrawingBottomBar(
             )
         }
 
-        // Color selection
+        // Color selection with dropdown
+        var showColorPicker by remember { mutableStateOf(false) }
+        val colors = listOf(
+            Color.Black,
+            Color.Red,
+            Color.Green,
+            Color.Blue,
+            Color.Yellow,
+            Color.Magenta,
+            Color.Cyan,
+            Color.Gray
+        )
+        
+        // Color picker item
         NavigationBarItem(
             icon = {
                 Box(
                     modifier = Modifier
                         .size(24.dp)
+                        .clip(CircleShape)
                         .background(selectedColor)
-                )
+                ) {
+                    DropdownMenu(
+                        expanded = showColorPicker,
+                        onDismissRequest = { showColorPicker = false },
+                        modifier = Modifier
+                            .width(200.dp)
+                            .padding(8.dp)
+                    ) {
+                        colors.chunked(4).forEach { rowColors ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                rowColors.forEach { color ->
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .padding(4.dp)
+                                            .clip(CircleShape)
+                                            .background(color)
+                                            .clickable {
+                                                onColorSelected(color)
+                                                showColorPicker = false
+                                            }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             },
             selected = false,
-            onClick = {
-                onColorSelected
-            }
+            onClick = { showColorPicker = !showColorPicker }
         )
 
         // Fill toggle
