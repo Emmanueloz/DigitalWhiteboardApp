@@ -87,12 +87,15 @@ class FirebaseDrawingRepository(
     private fun toShape(map: Map<String, Any>): DrawingShape? {
         return try {
             val type = map["type"] as? String ?: return null
-            when (type) {
+            when (type.lowercase()) {
                 "line" -> Line.fromFirebaseMap(map)
                 "rectangle" -> Rectangle.fromFirebaseMap(map)
                 "circle" -> Circle.fromFirebaseMap(map)
-                "freePath" -> FreePath.fromFirebaseMap(map)
-                else -> null
+                "freepath" -> FreePath.fromFirebaseMap(map)
+                else -> {
+                    Timber.e("Unknown shape type: $type")
+                    null
+                }
             }
         } catch (e: Exception) {
             Timber.e(e, "Error converting map to shape")
