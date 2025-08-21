@@ -1,0 +1,373 @@
+package com.example.digitalwhiteboardapp.presentation.drawing
+
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.digitalwhiteboardapp.data.repository.DrawingRepository
+import com.example.shared.model.Line
+import com.example.shared.model.Rectangle
+import com.example.shared.model.Circle
+import com.example.shared.model.FreePath
+import com.example.shared.model.ShapeType
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import timber.log.Timber
+import kotlin.collections.last
+
+/**
+ * ViewModel for the drawing screen.
+ * Manages the drawing state and handles user interactions.
+ */
+class DrawingViewModel(
+    private val repository: DrawingRepository
+) : ViewModel() {
+
+    private var _uiState = MutableStateFlow(DrawingUiState())
+    val uiState: StateFlow<DrawingUiState> = _uiState.asStateFlow()
+
+    init {
+        loadDrawing()
+    }
+
+    private fun loadDrawing() {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(isLoading = true)
+                
+                // Load shapes from repository only once
+                val shapes = repository.loadShapes()
+                Timber.tag("DrawingViewModel").d("Loaded shapes: $shapes")
+                _uiState.value = _uiState.value.copy(
+                    shapes = shapes,
+                    isLoading = false,
+                    errorMessage = null
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Failed to load drawing: ${e.message}",
+                    isLoading = false
+                )
+            }
+        }
+    }
+
+    fun onStartDrawing(offset: Offset) {
+        val currentState = _uiState.value
+        // Start a new shape
+        val newShape = when (currentState.selectedTool) {
+            ShapeType.LINE -> Line(
+                start = offset,
+                end = offset,
+                color = currentState.selectedColor,
+                strokeWidth = currentState.strokeWidth,
+                isFilled = currentState.isFilled
+            )
+            ShapeType.RECTANGLE -> Rectangle(
+                topLeft = offset,
+                bottomRight = offset,
+                color = currentState.selectedColor,
+                    strokeWidth = currentState.strokeWidth,
+                    isFilled = currentState.isFilled
+                )
+                ShapeType.CIRCLE -> Circle(
+                    center = offset,
+                    radius = 0f,
+                    color = currentState.selectedColor,
+                    strokeWidth = currentState.strokeWidth,
+                    isFilled = currentState.isFilled
+                )
+                ShapeType.FREE_PATH -> FreePath(
+                    points = listOf(offset),
+                    color = currentState.selectedColor,
+                    strokeWidth = currentState.strokeWidth,
+                    isFilled = currentState.isFilled
+                )
+                else -> return
+            }
+            _uiState.value = currentState.copy(
+                currentShape = newShape
+            )
+        }
+    
+    fun onDraw(offset: Offset) {
+        val currentState = _uiState.value
+        currentState.currentShape?.let { currentShape ->
+            when (currentShape) {
+                is Line -> {
+                    _uiState.value = currentState.copy(
+                        currentShape = currentShape.copy(
+                            end = offset
+                        )
+                    )
+                }
+                is Rectangle -> {
+                    _uiState.value = currentState.copy(
+                        currentShape = currentShape.copy(
+                            bottomRight = offset
+                        )
+                    )
+                }
+                is Circle -> {
+                    val center = currentShape.center
+                    val radius = (offset - center).getDistance()
+                    _uiState.value = currentState.copy(
+                        currentShape = currentShape.copy(
+                            radius = radius
+                        )
+                    )
+                }
+                is FreePath -> {
+                    val newPoints = currentShape.points.toMutableList().apply {
+                        add(offset)
+                    }
+                    _uiState.value = currentState.copy(
+                        currentShape = currentShape.copy(
+                            points = newPoints
+                        )
+                    )
+                }
+            }
+        }
+    }
+    
+    fun onEndDrawing() {
+        val currentState = _uiState.value
+        val currentShape = currentState.currentShape ?: return
+        
+        // Only add the shape if it's valid (has points or dimensions)
+        val isValidShape = when (currentShape) {
+            is Line -> currentShape.start != currentShape.end
+            is Rectangle -> currentShape.topLeft != currentShape.bottomRight
+            is Circle -> currentShape.radius > 0
+            is FreePath -> currentShape.points.size > 1
+            else -> false
+        }
+        
+        if (isValidShape) {
+            // Update local state immediately for UI
+            val updatedShapes = currentState.shapes + currentShape
+            _uiState.value = currentState.copy(
+                shapes = updatedShapes,
+                currentShape = null,
+                selectedShapeIndex = -1
+            )
+            
+            // Save to Firebase in the background (only for persistence)
+            viewModelScope.launch {
+                try {
+                    repository.saveShape(currentShape)
+                } catch (e: Exception) {
+                    // Don't show error to user for background save
+                    Timber.tag("DrawingViewModel").e("Failed to save shape: ${e.message}")
+                }
+            }
+        } else {
+            // If shape is not valid, just clear the current shape
+            _uiState.value = currentState.copy(
+                currentShape = null,
+            )
+        }
+    }
+    
+     fun onUndo() {
+        _uiState.value.let { currentState ->
+            if (currentState.shapes.isNotEmpty()) {
+                val updatedShapes = currentState.shapes.toMutableList()
+
+
+                if (updatedShapes.size>1) {
+                    viewModelScope.launch {
+                        repository.removeShape(updatedShapes.last().id)
+                    }
+                    updatedShapes.removeAt(updatedShapes.lastIndex)
+
+                    _uiState.value = currentState.copy(
+                        shapes = updatedShapes,
+                        currentShape = null
+                    )
+                }
+                else{
+                    viewModelScope.launch {
+                        repository.clearDrawing()
+                    }
+
+                    _uiState.value = currentState.copy(
+                        shapes = emptyList(),
+                        currentShape = null
+                    )
+                }
+
+                saveCurrentState()
+
+            }
+        }
+
+    }
+    
+    fun onClear() {
+        _uiState.value = _uiState.value.copy(
+            shapes = mutableListOf(),
+            selectedShapeIndex = -1,
+            currentShape = null
+        )
+        saveCurrentState()
+        viewModelScope.launch {
+            repository.clearDrawing()
+        }
+    }
+    
+    fun selectTool(tool: ShapeType) {
+        _uiState.value = _uiState.value.copy(
+            selectedTool = tool,
+            selectedShapeIndex = -1,
+            currentShape = null
+        )
+    }
+    
+    fun setColor(color: Color) {
+        _uiState.value = _uiState.value.copy(
+            selectedColor = color
+        )
+    }
+    
+    fun setStrokeWidth(width: Float) {
+        _uiState.value = _uiState.value.copy(
+            strokeWidth = width
+        )
+    }
+    
+    fun toggleFill() {
+        _uiState.value = _uiState.value.copy(
+            isFilled = !_uiState.value.isFilled
+        )
+    }
+    
+    private fun isPointOnShape(point: Offset, shape: Any, tolerance: Float): Boolean {
+        return when (shape) {
+            is Line -> {
+                // Simple distance from point to line segment check
+                val lineStart = shape.start
+                val lineEnd = shape.end
+                
+                // Vector from start to end
+                val lineVector = lineEnd - lineStart
+                val lineLengthSquared = lineVector.x * lineVector.x + lineVector.y * lineVector.y
+                
+                // If line has zero length, check distance to the single point
+                if (lineLengthSquared == 0f) {
+                    return (point - lineStart).getDistanceSquared() <= tolerance * tolerance
+                }
+                
+                // Project point onto the line
+                val t = ((point.x - lineStart.x) * lineVector.x + 
+                        (point.y - lineStart.y) * lineVector.y) / lineLengthSquared
+                
+                // Find closest point on the line segment
+                val closestPoint = when {
+                    t < 0 -> lineStart
+                    t > 1 -> lineEnd
+                    else -> Offset(
+                        lineStart.x + t * lineVector.x,
+                        lineStart.y + t * lineVector.y
+                    )
+                }
+                
+                // Check distance to the closest point
+                (point - closestPoint).getDistanceSquared() <= tolerance * tolerance
+            }
+            is Rectangle -> {
+                // Check if point is inside the rectangle with some tolerance
+                val left = minOf(shape.topLeft.x, shape.bottomRight.x) - tolerance
+                val top = minOf(shape.topLeft.y, shape.bottomRight.y) - tolerance
+                val right = maxOf(shape.topLeft.x, shape.bottomRight.x) + tolerance
+                val bottom = maxOf(shape.topLeft.y, shape.bottomRight.y) + tolerance
+                
+                point.x in left..right && point.y in top..bottom
+            }
+            is Circle -> {
+                // Check if point is within the circle's radius + tolerance
+                val distanceSquared = (point.x - shape.center.x) * (point.x - shape.center.x) +
+                        (point.y - shape.center.y) * (point.y - shape.center.y)
+                
+                val radius = shape.radius
+                distanceSquared <= (radius + tolerance) * (radius + tolerance) &&
+                        distanceSquared >= (radius - tolerance) * (radius - tolerance)
+            }
+            is FreePath -> {
+                // Check if point is close to any segment of the path
+                for (i in 0 until shape.points.size - 1) {
+                    val p1 = shape.points[i]
+                    val p2 = shape.points[i + 1]
+                    
+                    // Simple distance from point to line segment check
+                    val lineVector = p2 - p1
+                    val lineLengthSquared = lineVector.x * lineVector.x + lineVector.y * lineVector.y
+                    
+                    // If line has zero length, check distance to the single point
+                    if (lineLengthSquared == 0f) {
+                        if ((point - p1).getDistanceSquared() <= tolerance * tolerance) {
+                            return true
+                        }
+                        continue
+                    }
+                    
+                    // Project point onto the line
+                    val t = ((point.x - p1.x) * lineVector.x + 
+                            (point.y - p1.y) * lineVector.y) / lineLengthSquared
+                    
+                    // Find closest point on the line segment
+                    val closestPoint = when {
+                        t < 0 -> p1
+                        t > 1 -> p2
+                        else -> Offset(
+                            p1.x + t * lineVector.x,
+                            p1.y + t * lineVector.y
+                        )
+                    }
+                    
+                    // Check distance to the closest point
+                    if ((point - closestPoint).getDistanceSquared() <= tolerance * tolerance) {
+                        return true
+                    }
+                }
+                false
+            }
+            else -> false
+        }
+    }
+    
+    private fun Offset.getDistanceSquared(): Float {
+        return x * x + y * y
+    }
+    
+    private fun Offset.getDistance(): Float {
+        return kotlin.math.sqrt(x * x + y * y)
+    }
+    
+    private fun saveCurrentState() {
+        viewModelScope.launch {
+            try {
+                val currentState = _uiState.value
+                // Save the current shape if it exists
+                currentState.currentShape?.let { shape ->
+                    repository.saveShape(shape)
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Failed to save: ${e.message}"
+                )
+            }
+        }
+    }
+    
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(
+            errorMessage = null
+        )
+    }
+    
+
+
+
+}
