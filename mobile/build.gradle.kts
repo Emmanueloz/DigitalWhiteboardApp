@@ -15,7 +15,6 @@ android {
     defaultConfig {
         applicationId = "com.example.digitalwhiteboardapp"
         minSdk = 26
-        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -35,9 +34,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    
+
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     buildFeatures {
@@ -83,7 +82,8 @@ dependencies {
     implementation(libs.androidx.material3)
     // Logging
     implementation("com.jakewharton.timber:timber:5.0.1")
-    
+    implementation(project(":shared"))
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

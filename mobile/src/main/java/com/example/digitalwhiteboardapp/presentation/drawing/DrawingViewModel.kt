@@ -4,12 +4,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.digitalwhiteboardapp.data.model.Circle
-import com.example.digitalwhiteboardapp.data.model.FreePath
-import com.example.digitalwhiteboardapp.data.model.Line
-import com.example.digitalwhiteboardapp.data.model.Rectangle
-import com.example.digitalwhiteboardapp.data.model.ShapeType
 import com.example.digitalwhiteboardapp.data.repository.DrawingRepository
+import com.example.shared.model.Line
+import com.example.shared.model.Rectangle
+import com.example.shared.model.Circle
+import com.example.shared.model.FreePath
+import com.example.shared.model.ShapeType
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import timber.log.Timber

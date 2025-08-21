@@ -1,4 +1,4 @@
-package com.example.digitalwhiteboardapp.data.model
+package com.example.shared.model
 
 /**
  * Represents the type of shape that can be drawn on the canvas.

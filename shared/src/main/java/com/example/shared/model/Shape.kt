@@ -1,4 +1,4 @@
-package com.example.digitalwhiteboardapp.data.model
+package com.example.shared.model
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size

@@ -1,7 +1,7 @@
 package com.example.digitalwhiteboardapp.data.repository
 
-import com.example.digitalwhiteboardapp.data.model.DrawingShape
-import kotlinx.coroutines.flow.Flow
+
+import com.example.shared.model.DrawingShape
 
 /**
  * Repository for managing the drawing board.

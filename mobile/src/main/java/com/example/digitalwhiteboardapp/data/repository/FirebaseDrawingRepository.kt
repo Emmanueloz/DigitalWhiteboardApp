@@ -1,11 +1,12 @@
 package com.example.digitalwhiteboardapp.data.repository
 
-import com.example.digitalwhiteboardapp.data.model.Circle
-import com.example.digitalwhiteboardapp.data.model.DrawingShape
-import com.example.digitalwhiteboardapp.data.model.FreePath
-import com.example.digitalwhiteboardapp.data.model.Line
-import com.example.digitalwhiteboardapp.data.model.Rectangle
-import com.example.digitalwhiteboardapp.data.model.ShapeType
+
+import com.example.shared.model.Circle
+import com.example.shared.model.DrawingShape
+import com.example.shared.model.FreePath
+import com.example.shared.model.Line
+import com.example.shared.model.Rectangle
+import com.example.shared.model.ShapeType
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.tasks.await
 import timber.log.Timber

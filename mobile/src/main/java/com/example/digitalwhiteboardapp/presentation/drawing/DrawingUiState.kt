@@ -1,8 +1,8 @@
 package com.example.digitalwhiteboardapp.presentation.drawing
 
 import androidx.compose.ui.graphics.Color
-import com.example.digitalwhiteboardapp.data.model.DrawingShape
-import com.example.digitalwhiteboardapp.data.model.ShapeType
+import com.example.shared.model.DrawingShape
+import com.example.shared.model.ShapeType
 
 /**
  * Represents the UI state for the drawing screen.

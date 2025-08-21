@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 rootProject.name = "DigitalWhiteboardApp"
 include(":tv")
 include(":mobile")
+include(":shared")
