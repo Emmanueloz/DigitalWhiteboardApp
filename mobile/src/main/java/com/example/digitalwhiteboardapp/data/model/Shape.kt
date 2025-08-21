@@ -131,7 +131,6 @@ data class Line(
             color = color,
             start = start,
             end = end,
-            strokeWidth = strokeWidth
         )
     }
 }

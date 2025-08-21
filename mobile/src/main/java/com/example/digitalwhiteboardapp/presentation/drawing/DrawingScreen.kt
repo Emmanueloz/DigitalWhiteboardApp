@@ -82,8 +82,6 @@ fun DrawingScreen(
                             )
                         }
                 ) {
-
-
                     // Draw all saved shapes
                     uiState.shapes.forEach { shape ->
                         shape.draw(this)

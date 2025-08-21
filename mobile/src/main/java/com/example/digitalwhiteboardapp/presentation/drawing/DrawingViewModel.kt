@@ -183,8 +183,6 @@ class DrawingViewModel(
                     )
                 }
                 else{
-
-
                     _uiState.value = currentState.copy(
                         shapes = emptyList(),
                         currentShape = null
