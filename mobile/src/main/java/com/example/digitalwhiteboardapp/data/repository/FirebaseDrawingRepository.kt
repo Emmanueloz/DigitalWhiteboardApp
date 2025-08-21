@@ -5,14 +5,8 @@ import com.example.digitalwhiteboardapp.data.model.DrawingShape
 import com.example.digitalwhiteboardapp.data.model.FreePath
 import com.example.digitalwhiteboardapp.data.model.Line
 import com.example.digitalwhiteboardapp.data.model.Rectangle
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
+import com.example.digitalwhiteboardapp.data.model.ShapeType
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import timber.log.Timber
 
@@ -23,26 +17,44 @@ class FirebaseDrawingRepository(
 ) : DrawingRepository {
     
     private val shapesRef = database.getReference(SHAPES_PATH)
-    
+
     override suspend fun loadShapes(): List<DrawingShape> {
         return try {
-            val snapshot = shapesRef.get().await()
+            val snapshot = shapesRef
+                .orderByChild("createdAt") // Ordenar por timestamp de creación
+                .get()
+                .await()
+
             Timber.tag("FirebaseDrawingRepository").d("Snapshot: $snapshot")
-            snapshot.children.mapNotNull { child ->
-                val map = child.value as? Map<String, Any> ?: return@mapNotNull null
-                // Skip shapes marked as removed
-                if (map["isRemoved"] == true) return@mapNotNull null
-                toShape(map)
-            }
+
+            snapshot.children
+                .mapNotNull { child ->
+                    val map = child.value as? Map<String, Any> ?: return@mapNotNull null
+                    // Skip shapes marked as removed
+                    if (map["isRemoved"] == true) return@mapNotNull null
+                    toShape(map)
+                }
+                .sortedBy { shape ->
+                    // Ordenamiento adicional por timestamp para garantizar el orden correcto
+                    val map = shape.toFirebaseMap()
+                    (map["createdAt"] as? Number)?.toLong() ?: 0L
+                }
+
         } catch (e: Exception) {
             Timber.e(e, "Error loading shapes from Firebase")
             emptyList()
         }
     }
-    
+
     override suspend fun saveShape(shape: DrawingShape) {
         try {
             val shapeMap = shape.toFirebaseMap().toMutableMap()
+
+            // Agregar timestamp si no existe
+            if (!shapeMap.containsKey("createdAt")) {
+                shapeMap["createdAt"] = System.currentTimeMillis()
+            }
+
             // If shape is marked as removed, set isRemoved flag and update
             if (shape.isRemoved) {
                 shapeMap["isRemoved"] = true
@@ -88,11 +100,11 @@ class FirebaseDrawingRepository(
     private fun toShape(map: Map<String, Any>): DrawingShape? {
         return try {
             val type = map["type"] as? String ?: return null
-            when (type.lowercase()) {
-                "line" -> Line.fromFirebaseMap(map)
-                "rectangle" -> Rectangle.fromFirebaseMap(map)
-                "circle" -> Circle.fromFirebaseMap(map)
-                "freepath" -> FreePath.fromFirebaseMap(map)
+            when (type.uppercase()) {
+                ShapeType.LINE.name -> Line.fromFirebaseMap(map)
+                ShapeType.RECTANGLE.name -> Rectangle.fromFirebaseMap(map)
+                ShapeType.CIRCLE.name -> Circle.fromFirebaseMap(map)
+                ShapeType.FREE_PATH.name -> FreePath.fromFirebaseMap(map)
                 else -> {
                     Timber.e("Unknown shape type: $type")
                     null

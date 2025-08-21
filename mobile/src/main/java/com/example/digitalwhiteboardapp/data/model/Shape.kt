@@ -9,15 +9,15 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
-import kotlinx.serialization.builtins.*
 import kotlinx.serialization.builtins.ListSerializer
 import java.util.UUID
+import androidx.core.graphics.toColorInt
 
 
 // Extension function to convert hex string to Color
 fun String.hexToColor(): Color {
     return try {
-        val color = android.graphics.Color.parseColor(this)
+        val color = this.toColorInt()
         Color(color)
     } catch (e: Exception) {
         Color.Black
@@ -45,6 +45,8 @@ abstract class DrawingShape {
     abstract val isFilled: Boolean
     abstract val isRemoved: Boolean
 
+    abstract val createdAt: Long
+
     abstract fun toSvg(): String
     abstract fun draw(scope: DrawScope)
 
@@ -55,7 +57,8 @@ abstract class DrawingShape {
             "color" to color.toHex(),
             "strokeWidth" to strokeWidth,
             "isFilled" to isFilled,
-            "isRemoved" to isRemoved
+            "isRemoved" to isRemoved,
+            "createdAt" to createdAt
         )
     }
 
@@ -86,7 +89,8 @@ data class Line(
     override val color: Color,
     override val strokeWidth: Float,
     override val isFilled: Boolean = false,
-    override val isRemoved: Boolean = false
+    override val isRemoved: Boolean = false,
+    override val createdAt: Long = System.currentTimeMillis()
 ) : DrawingShape() {
     override val type: ShapeType = ShapeType.LINE
 
@@ -116,7 +120,8 @@ data class Line(
                 color = (map["color"] as? String)?.hexToColor() ?: Color.Black,
                 strokeWidth = (map["strokeWidth"] as? Number)?.toFloat() ?: 5f,
                 isFilled = map["isFilled"] as? Boolean ?: false,
-                isRemoved = map["isRemoved"] as? Boolean ?: false
+                isRemoved = map["isRemoved"] as? Boolean ?: false,
+
             )
         }
     }
@@ -149,7 +154,8 @@ data class Rectangle(
     override val color: Color,
     override val strokeWidth: Float,
     override val isFilled: Boolean = false,
-    override val isRemoved: Boolean = false
+    override val isRemoved: Boolean = false,
+    override val createdAt: Long = System.currentTimeMillis()
 ) : DrawingShape() {
     override val type: ShapeType = ShapeType.RECTANGLE
 
@@ -226,7 +232,8 @@ data class Circle(
     override val color: Color,
     override val strokeWidth: Float,
     override val isFilled: Boolean = false,
-    override val isRemoved: Boolean = false
+    override val isRemoved: Boolean = false,
+    override val createdAt: Long = System.currentTimeMillis()
 ) : DrawingShape() {
     override val type: ShapeType = ShapeType.CIRCLE
 
@@ -295,7 +302,8 @@ data class FreePath(
     override val color: Color,
     override val strokeWidth: Float,
     override val isFilled: Boolean = false,
-    override val isRemoved: Boolean = false
+    override val isRemoved: Boolean = false,
+    override val createdAt: Long = System.currentTimeMillis()
 ) : DrawingShape() {
     override val type: ShapeType = ShapeType.FREE_PATH
 
