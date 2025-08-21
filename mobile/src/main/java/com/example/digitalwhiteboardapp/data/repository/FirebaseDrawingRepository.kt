@@ -27,6 +27,7 @@ class FirebaseDrawingRepository(
     override suspend fun loadShapes(): List<DrawingShape> {
         return try {
             val snapshot = shapesRef.get().await()
+            Timber.tag("FirebaseDrawingRepository").d("Snapshot: $snapshot")
             snapshot.children.mapNotNull { child ->
                 val map = child.value as? Map<String, Any> ?: return@mapNotNull null
                 // Skip shapes marked as removed

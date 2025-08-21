@@ -1,4 +1,5 @@
 package com.example.digitalwhiteboardapp.presentation.drawing
+
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
@@ -36,6 +37,7 @@ class DrawingViewModel(
                 
                 // Load shapes from repository only once
                 val shapes = repository.loadShapes()
+                Timber.tag("DrawingViewModel").d("Loaded shapes: $shapes")
                 _uiState.value = _uiState.value.copy(
                     shapes = shapes,
                     isLoading = false,
@@ -157,7 +159,7 @@ class DrawingViewModel(
                     repository.saveShape(currentShape)
                 } catch (e: Exception) {
                     // Don't show error to user for background save
-                    Timber.e(e, "Error saving to Firebase")
+                    Timber.tag("DrawingViewModel").e("Failed to save shape: ${e.message}")
                 }
             }
         } else {
@@ -175,6 +177,9 @@ class DrawingViewModel(
 
 
                 if (updatedShapes.size>1) {
+                    viewModelScope.launch {
+                        repository.removeShape(updatedShapes.last().id)
+                    }
                     updatedShapes.removeAt(updatedShapes.lastIndex)
 
                     _uiState.value = currentState.copy(
@@ -183,6 +188,10 @@ class DrawingViewModel(
                     )
                 }
                 else{
+                    viewModelScope.launch {
+                        repository.clearDrawing()
+                    }
+
                     _uiState.value = currentState.copy(
                         shapes = emptyList(),
                         currentShape = null
@@ -191,9 +200,6 @@ class DrawingViewModel(
 
                 saveCurrentState()
 
-                viewModelScope.launch {
-                    repository.removeShape(updatedShapes.last().id)
-                }
             }
         }
 

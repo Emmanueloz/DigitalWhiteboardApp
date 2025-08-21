@@ -20,12 +20,16 @@ import com.example.digitalwhiteboardapp.presentation.drawing.DrawingViewModel
 import com.example.digitalwhiteboardapp.ui.theme.DigitalWhiteboardAppTheme
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.firebase.database.FirebaseDatabase
+import timber.log.Timber
 
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: DrawingViewModel
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
         
         // Initialize repository and ViewModel
         val firebaseDatabase = FirebaseDatabase.getInstance()
